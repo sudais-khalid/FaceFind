@@ -1,0 +1,35 @@
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+
+# Frontend isn't part of the backend build context, but excluded defensively
+# in case context ever changes
+frontend/node_modules
+frontend/dist
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+venv
+.venv
+.pytest_cache
+.coverage
+htmlcov
+
+# Secrets / large model artifacts - mounted as volumes at runtime, never
+# baked into an image layer
+keys
+models
+faiss_indexes
+
+*.log
+.DS_Store
+.vscode
+.idea
+README.md
+DEPLOYMENT.md
+tests/
+**/*.test.*
