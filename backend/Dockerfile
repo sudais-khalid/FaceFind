@@ -14,9 +14,23 @@ RUN pip install --no-cache-dir -r requirements.txt
 # ---- Runtime stage: slim image, no build tools, non-root user ----
 FROM python:3.11-slim AS runtime
 
-# libpq5 (runtime lib) is needed for asyncpg/psycopg at runtime; libpq-dev
-# and gcc (build tools) stay behind in the build stage.
-RUN apt-get update && apt-get install -y --no-install-recommends libpq5 && rm -rf /var/lib/apt/lists/*
+# libpq5 (runtime lib) is needed for asyncpg/psycopg; the rest are shared
+# libraries mediapipe's opencv-contrib-python dependency needs merely to
+# *import* cv2 on Linux (not to actually open a GUI window) - without them
+# the app crashes on startup with "ImportError: libxcb.so.1: cannot open
+# shared object file". libpq-dev/gcc (build tools) stay behind in the build
+# stage.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    libgl1 \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
+    libxcb1 \
+    libegl1 \
+    libgles2 \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
