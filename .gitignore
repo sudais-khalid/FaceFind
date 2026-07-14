@@ -29,3 +29,4 @@ yarn-error.log*
 .pnp
 .pnp.js
 .claude/
+docs/

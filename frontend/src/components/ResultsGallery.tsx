@@ -90,7 +90,7 @@ function FileCard({ file }: { file: MatchedFile }) {
       </button>
       <div className="flex items-center justify-between gap-3 p-3">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-slate-900 truncate">File {file.file_id.slice(0, 8)}</p>
+          <p className="text-sm font-semibold text-slate-900 truncate">{file.filename || `File ${file.file_id.slice(0, 8)}`}</p>
           {file.confidence && <p className="text-xs text-slate-500 capitalize">{file.confidence} confidence</p>}
         </div>
         <button
@@ -99,10 +99,16 @@ function FileCard({ file }: { file: MatchedFile }) {
           onClick={async () => {
             try {
               const response = await api.get<{ url: string }>(`/api/files/${file.file_id}/url`);
-              window.open(response.data.url, '_blank', 'noopener,noreferrer');
+              // download=1 makes the media proxy respond with a Content-Disposition
+              // attachment carrying the original filename and extension.
+              const anchor = document.createElement('a');
+              anchor.href = `${response.data.url}&download=1`;
+              document.body.appendChild(anchor);
+              anchor.click();
+              anchor.remove();
             } catch {
               // fallback handled by browser
-}
+            }
           }}
           type="button"
         >

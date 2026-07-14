@@ -1,65 +1,50 @@
+import threading
 from typing import List
 
 import cv2
-import mediapipe as mp
 import numpy as np
-from mediapipe.tasks import python as mp_python
-from mediapipe.tasks.python import vision as mp_vision
 
 from app.config import get_settings
 
 settings = get_settings()
 
-# Real event photos are frequently distant/angled group shots where MediaPipe's
-# face confidence rarely clears 0.70 (measured empirically against actual
-# indexed photos in this pipeline's test data). Lowering this is the single
-# biggest lever for indexing recall - a missed detection at index time means
-# the photo can never be found by any future scan, regardless of match
-# threshold. Scan is also lowered to match: testing against real photos from
-# this pipeline showed genuine, usable faces landing at 0.70-0.79 confidence,
-# meaning 0.80 was rejecting legitimate live captures outright before they
-# ever reached the matching stage.
-INDEXING_CONFIDENCE_THRESHOLD = 0.50
-SCAN_CONFIDENCE_THRESHOLD = 0.65
+# YuNet emits calibrated per-face confidences. Indexing leans toward recall:
+# small/distant faces in group shots matter, and a false-positive "face" only
+# adds a stray vector that sits near 0.0 cosine against any real probe, so it
+# never surfaces in results. Live scans want one clean, confident face.
+INDEXING_CONFIDENCE_THRESHOLD = 0.60
+SCAN_CONFIDENCE_THRESHOLD = 0.80
 
-# ArcFace's 5-point alignment template expects eye CENTERS (not corners), nose
-# tip, and mouth corners. MediaPipe's 478-point mesh includes iris landmarks
-# (468 = right iris center, 473 = left iris center) which are a materially
-# more precise and stable match to the template than the eye-corner points
-# used previously - better alignment means less embedding drift between two
-# photos of the same person, which directly improves match recall.
-_LEFT_EYE_IDX = 468
-_RIGHT_EYE_IDX = 473
-_NOSE_IDX = 1
-_MOUTH_LEFT_IDX = 61
-_MOUTH_RIGHT_IDX = 291
+# Longest edge fed to the detector. Detections are mapped back to original
+# image coordinates so callers can crop/align from the full-resolution image.
+MAX_DETECTION_EDGE = 1920
 
 
 class FaceDetector:
-    """Real face detection + landmarking via MediaPipe FaceLandmarker."""
+    """Multi-face detection via YuNet (cv2.FaceDetectorYN).
 
-    _landmarkers: dict[float, "mp_vision.FaceLandmarker"] = {}
+    Chosen over MediaPipe FaceLandmarker after a head-to-head on real event
+    photos: FaceLandmarker is a near-field model and found 0 faces on typical
+    DSLR group shots where YuNet found every person. YuNet also returns the
+    exact 5 landmarks (eyes, nose tip, mouth corners) the ArcFace alignment
+    template needs, with real confidence scores.
+    """
+
+    _detector: "cv2.FaceDetectorYN | None" = None
+    _lock = threading.Lock()
 
     def __init__(self, model_path: str | None = None):
-        self.model_path = model_path or settings.face_landmarker_model_path
+        self.model_path = model_path or settings.yunet_model_path
+        if FaceDetector._detector is None:
+            FaceDetector._detector = cv2.FaceDetectorYN.create(
+                self.model_path,
+                "",
+                (320, 320),
+                0.5,   # score threshold at the model level; per-mode filter below
+                0.3,   # NMS threshold
+                5000,  # top_k
+            )
         self.model_loaded = True
-
-    def _get_landmarker(self, threshold: float) -> "mp_vision.FaceLandmarker":
-        cached = FaceDetector._landmarkers.get(threshold)
-        if cached is not None:
-            return cached
-
-        base_options = mp_python.BaseOptions(model_asset_path=self.model_path)
-        options = mp_vision.FaceLandmarkerOptions(
-            base_options=base_options,
-            num_faces=10,
-            min_face_detection_confidence=threshold,
-            min_face_presence_confidence=threshold,
-            running_mode=mp_vision.RunningMode.IMAGE,
-        )
-        landmarker = mp_vision.FaceLandmarker.create_from_options(options)
-        FaceDetector._landmarkers[threshold] = landmarker
-        return landmarker
 
     def detect(
         self,
@@ -67,21 +52,16 @@ class FaceDetector:
         mode: str = "scan",
         confidence_threshold: float | None = None,
     ) -> List[dict]:
-        """Detect faces in image, returning bbox + 5-point landmarks per face."""
+        """Detect faces, returning bbox + 5-point landmarks per face.
+
+        Coordinates are in the ORIGINAL image space regardless of any internal
+        downscaling, so callers can crop and align from the full-res image.
+        """
         if not isinstance(image, np.ndarray) or image.ndim < 2:
             return []
 
-        height, width = image.shape[:2]
-
-        longest_edge = max(height, width)
-        if longest_edge > 1920:
-            scale = 1920 / float(longest_edge)
-            resized_width = max(1, int(round(width * scale)))
-            resized_height = max(1, int(round(height * scale)))
-            image = cv2.resize(image, (resized_width, resized_height), interpolation=cv2.INTER_AREA)
-            height, width = image.shape[:2]
-
-        if height < 20 or width < 20:
+        orig_height, orig_width = image.shape[:2]
+        if orig_height < 20 or orig_width < 20:
             return []
 
         threshold = confidence_threshold
@@ -95,41 +75,61 @@ class FaceDetector:
         else:
             rgb = image
 
-        rgb = np.ascontiguousarray(rgb.astype(np.uint8))
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+        scale = 1.0
+        longest_edge = max(orig_height, orig_width)
+        if longest_edge > MAX_DETECTION_EDGE:
+            scale = MAX_DETECTION_EDGE / float(longest_edge)
+            rgb = cv2.resize(
+                rgb,
+                (max(1, int(round(orig_width * scale))), max(1, int(round(orig_height * scale)))),
+                interpolation=cv2.INTER_AREA,
+            )
 
-        landmarker = self._get_landmarker(threshold)
-        result = landmarker.detect(mp_image)
+        det_height, det_width = rgb.shape[:2]
+        bgr = np.ascontiguousarray(rgb[:, :, ::-1].astype(np.uint8))
 
+        with FaceDetector._lock:
+            FaceDetector._detector.setInputSize((det_width, det_height))
+            _, detections = FaceDetector._detector.detect(bgr)
+
+        if detections is None:
+            return []
+
+        inv = 1.0 / scale
         faces = []
-        for face_landmarks in result.face_landmarks:
-            xs = [point.x * width for point in face_landmarks]
-            ys = [point.y * height for point in face_landmarks]
-            x1, x2 = max(0.0, min(xs)), min(float(width), max(xs))
-            y1, y2 = max(0.0, min(ys)), min(float(height), max(ys))
+        for det in detections:
+            confidence = float(det[14])
+            if confidence < threshold:
+                continue
 
-            def _pt(idx: int) -> list[float]:
-                point = face_landmarks[idx]
-                return [point.x * width, point.y * height]
+            x, y, w, h = det[0] * inv, det[1] * inv, det[2] * inv, det[3] * inv
+            x1 = max(0.0, x)
+            y1 = max(0.0, y)
+            x2 = min(float(orig_width), x + w)
+            y2 = min(float(orig_height), y + h)
 
+            # YuNet landmark order: right eye, left eye, nose tip, right mouth
+            # corner, left mouth corner (subject-relative). The ArcFace template
+            # expects image-left eye first, so sort each pair by x - robust for
+            # upright faces and immune to naming-convention mistakes.
+            points = det[4:14].reshape(5, 2) * inv
+            eyes = sorted([points[0], points[1]], key=lambda p: p[0])
+            mouth = sorted([points[3], points[4]], key=lambda p: p[0])
             landmarks = np.array(
-                [
-                    _pt(_LEFT_EYE_IDX),
-                    _pt(_RIGHT_EYE_IDX),
-                    _pt(_NOSE_IDX),
-                    _pt(_MOUTH_LEFT_IDX),
-                    _pt(_MOUTH_RIGHT_IDX),
-                ],
+                [eyes[0], eyes[1], points[2], mouth[0], mouth[1]],
                 dtype=np.float32,
             )
 
             faces.append(
                 {
                     "bbox": [x1, y1, x2, y2],
-                    "confidence": float(threshold),
+                    "confidence": confidence,
                     "landmarks": landmarks,
                     "kps": landmarks,
                 }
             )
 
+        # Largest/most confident faces first so scan paths that take faces[0]
+        # get the dominant face in frame.
+        faces.sort(key=lambda f: f["confidence"] * ((f["bbox"][2] - f["bbox"][0]) * (f["bbox"][3] - f["bbox"][1])), reverse=True)
         return faces

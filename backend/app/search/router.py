@@ -47,6 +47,7 @@ def _score_to_response_file(drive_file: DriveFile, score: float) -> MatchedFile:
         score=score,
         thumbnail_url=drive_file.thumbnail_link or "",
         mime_type=drive_file.mime_type,
+        filename=drive_file.filename,
     )
 
 

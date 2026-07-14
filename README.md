@@ -48,17 +48,17 @@ python -m app.scripts.diagnose_recall
 
 ## CV Models
 
-Face detection/landmarking runs on real, locally-executed models, not mocks:
+Face detection and recognition run on real, locally-executed models, not mocks:
 
-- **Detection + alignment**: MediaPipe `FaceLandmarker` (478-point face mesh; iris landmarks give precise eye centers for alignment). Bundled/downloaded automatically, no manual setup.
+- **Detection + 5-point landmarks**: YuNet (`cv2.FaceDetectorYN`, built into OpenCV). Chosen after a head-to-head against MediaPipe FaceLandmarker on real DSLR event photos, where MediaPipe found 0 faces in group shots and YuNet found every person. Tiny model (~230 KB), fast (~70 ms on a 1920px photo).
 - **Recognition**: a real ArcFace ResNet-100 ONNX model, run via `onnxruntime`.
 
-Neither model ships in this repo (both are gitignored - large binaries). Download them into `models/` before indexing/scanning will work:
+Neither model ships in this repo (gitignored binaries). Download them into `models/` before indexing/scanning will work:
 
 ```bash
 mkdir -p models
 curl -L -o models/arcface_r100.onnx "https://github.com/onnx/models/raw/main/validated/vision/body_analysis/arcface/model/arcfaceresnet100-8.onnx"
-curl -L -o models/face_landmarker.task "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task"
+curl -L -o models/face_detection_yunet_2023mar.onnx "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx"
 ```
 
 Liveness detection's optional deep anti-spoofing signal degrades gracefully (its weight is redistributed across the other signals) if `ANTISPOOFING_MODEL_PATH` isn't present - it's not required to run the app.

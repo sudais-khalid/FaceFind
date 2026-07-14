@@ -27,11 +27,24 @@ export default function Results() {
     setDownloadError(null);
     try {
       const zip = new (await import('jszip')).default();
+      const extFromMime = (mime?: string) => {
+        if (!mime) return 'jpg';
+        const map: Record<string, string> = {
+          'image/jpeg': 'jpg',
+          'image/png': 'png',
+          'image/webp': 'webp',
+          'image/heic': 'heic',
+          'video/mp4': 'mp4',
+          'video/quicktime': 'mov',
+        };
+        return map[mime] ?? mime.split('/')[1] ?? 'bin';
+      };
       await Promise.all(
         highConfidenceFiles.map(async (file, index) => {
           const urlResponse = await api.get<{ url: string }>(`/api/files/${file.file_id}/url`);
           const blob = await fetch(urlResponse.data.url).then((response) => response.blob());
-          zip.file(`facefind-${index + 1}`, blob);
+          const name = file.filename || `facefind-${index + 1}.${extFromMime(file.mime_type)}`;
+          zip.file(name, blob);
         }),
       );
       const blob = await zip.generateAsync({ type: 'blob' });

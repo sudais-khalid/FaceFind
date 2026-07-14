@@ -59,6 +59,7 @@ def pipeline(monkeypatch):
     models are ~265MB and gitignored on purpose, so tests must not depend on
     them being present on disk.
     """
+    monkeypatch.setattr(FaceDetector, "__init__", lambda self, model_path=None: None)
     monkeypatch.setattr(FaceDetector, "detect", _fake_detect)
     monkeypatch.setattr(FaceEmbedder, "__init__", lambda self, model_path=None: None)
     monkeypatch.setattr(FaceEmbedder, "embed", _fake_embed)

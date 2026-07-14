@@ -210,6 +210,7 @@ async def get_file_url(
 async def get_file_media(
     file_id: str,
     token: str,
+    download: bool = False,
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     """Stream the actual file bytes for a valid, unexpired signed token.
@@ -232,4 +233,14 @@ async def get_file_media(
 
     client = DriveClient(access_token=None, api_key=settings.google_api_key or None)
     media_bytes = await client.download_file(file_id)
-    return Response(content=media_bytes, media_type=drive_file.mime_type or "application/octet-stream")
+
+    # Always carry the original filename so "save as" / downloads keep the
+    # real name and extension. `inline` still renders in <img>/<video>;
+    # ?download=1 flips to attachment so the browser saves the file directly.
+    safe_name = (drive_file.filename or file_id).replace('"', "")
+    disposition = "attachment" if download else "inline"
+    return Response(
+        content=media_bytes,
+        media_type=drive_file.mime_type or "application/octet-stream",
+        headers={"Content-Disposition": f'{disposition}; filename="{safe_name}"'},
+    )

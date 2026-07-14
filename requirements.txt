@@ -9,7 +9,6 @@ python-jose[cryptography]==3.3.0
 httpx==0.26.0
 onnxruntime==1.27.0
 opencv-python-headless==4.9.0.80
-mediapipe>=0.10.30
 faiss-cpu==1.9.0
 celery[redis]==5.3.6
 redis==5.0.3

@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     faiss_index_dir: str = "./faiss_indexes"
     arcface_model_path: str = "./models/arcface_r100.onnx"
     retinaface_model_path: str = "./models/retinaface_r50.onnx"
-    face_landmarker_model_path: str = "./models/face_landmarker.task"
+    yunet_model_path: str = "./models/face_detection_yunet_2023mar.onnx"
     antispoofing_model_path: str = "./models/anti_spoof_v1.onnx"
     face_detection_threshold: float = 0.6
     # Thumbnails (~220px) are too small for reliable detection/embedding quality

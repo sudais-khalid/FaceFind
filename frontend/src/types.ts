@@ -19,5 +19,6 @@ export interface MatchedFile {
   score: number;
   thumbnail_url: string;
   mime_type?: string;
+  filename?: string;
   confidence?: 'high' | 'medium';
 }

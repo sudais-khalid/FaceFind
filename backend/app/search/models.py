@@ -17,6 +17,7 @@ class MatchedFile(BaseModel):
     score: float
     thumbnail_url: str
     mime_type: str | None = None
+    filename: str | None = None
 
 
 class SearchResponse(BaseModel):
