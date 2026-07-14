@@ -14,7 +14,7 @@ from app.db.models import DriveFile, Event, EventStatus, FaceEmbedding, SearchRe
 from app.dependencies import get_current_user
 from app.search.faiss_index import FAISSIndexManager
 from app.search.models import MatchedFile, ScanResponse, SearchRequest, SearchResponse
-from app.security.encryption import derive_key, encrypt_embedding
+from app.security.encryption import create_file_access_token, derive_key, encrypt_embedding
 
 router = APIRouter(prefix="/api", tags=["search"])
 settings = get_settings()
@@ -41,11 +41,19 @@ def _empty_search_response() -> SearchResponse:
     return SearchResponse(high_confidence=[], medium_confidence=[], total=0, search_complete=True)
 
 
-def _score_to_response_file(drive_file: DriveFile, score: float) -> MatchedFile:
+def _score_to_response_file(drive_file: DriveFile, score: float, user_id: str) -> MatchedFile:
+    # Thumbnails go through our own proxy: Drive's stored thumbnailLinks
+    # expire within hours, so raw links render as broken previews.
+    thumb_token = create_file_access_token(
+        drive_file.file_id,
+        user_id,
+        settings.master_encryption_key.encode("utf-8"),
+        expires_in_seconds=1800,
+    )
     return MatchedFile(
         file_id=drive_file.file_id,
         score=score,
-        thumbnail_url=drive_file.thumbnail_link or "",
+        thumbnail_url=f"{settings.public_base_url}/api/files/{drive_file.file_id}/thumb?token={thumb_token}",
         mime_type=drive_file.mime_type,
         filename=drive_file.filename,
     )
@@ -83,6 +91,7 @@ async def _fetch_drive_files_for_matches(
 def _build_bucketed_response(
     drive_files_by_faiss_id: dict[int, DriveFile],
     raw_matches: list[dict[str, float | int]],
+    user_id: str,
 ) -> tuple[list[MatchedFile], list[MatchedFile]]:
     files: list[MatchedFile] = []
     seen_file_ids: set[str] = set()
@@ -92,7 +101,7 @@ def _build_bucketed_response(
         if drive_file is None or drive_file.file_id in seen_file_ids:
             continue
         seen_file_ids.add(drive_file.file_id)
-        files.append(_score_to_response_file(drive_file, float(match["score"])))
+        files.append(_score_to_response_file(drive_file, float(match["score"]), user_id))
 
     return _split_search_results(files)
 
@@ -144,7 +153,7 @@ async def _load_cached_search_response(
         drive_file = drive_files.get(file_id)
         if drive_file is None:
             continue
-        matched_files.append(_score_to_response_file(drive_file, float(score)))
+        matched_files.append(_score_to_response_file(drive_file, float(score), str(user_id)))
 
     high_confidence, medium_confidence = _split_search_results(matched_files)
     return SearchResponse(
@@ -205,7 +214,7 @@ async def scan_faces(
     raw_matches = index_manager.search(str(event.event_id), scan_result["embedding"], top_k=500, threshold=0.40)
     faiss_ids = [int(match["id"]) for match in raw_matches]
     drive_files_by_faiss_id = await _fetch_drive_files_for_matches(db, event.event_id, faiss_ids)
-    high_confidence, medium_confidence = _build_bucketed_response(drive_files_by_faiss_id, raw_matches)
+    high_confidence, medium_confidence = _build_bucketed_response(drive_files_by_faiss_id, raw_matches, str(user.user_id))
 
     all_matches = high_confidence + medium_confidence
     await _store_search_result(db, user.user_id, event.event_id, all_matches)

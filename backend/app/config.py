@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     google_api_key: str = ""
     master_encryption_key: str = "dummy-encryption-key-32-bytes-long-x"
     faiss_index_dir: str = "./faiss_indexes"
+    thumb_cache_dir: str = "./thumb_cache"
     arcface_model_path: str = "./models/arcface_r100.onnx"
     retinaface_model_path: str = "./models/retinaface_r50.onnx"
     yunet_model_path: str = "./models/face_detection_yunet_2023mar.onnx"

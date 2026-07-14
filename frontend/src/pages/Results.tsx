@@ -1,23 +1,16 @@
-import { Download, RotateCcw, Image, Video } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Download, RotateCcw } from 'lucide-react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import ResultsGallery from '../components/ResultsGallery';
 import { useStore } from '../store/useStore';
-import type { MatchedFile } from '../types';
 
 export default function Results() {
   const navigate = useNavigate();
   const event = useStore((state) => state.event);
   const results = useStore((state) => state.results);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setLoading(false);
-  }, []);
 
   const highConfidenceFiles = results.filter((f) => f.confidence === 'high');
   const mediumConfidenceFiles = results.filter((f) => f.confidence === 'medium');
@@ -51,49 +44,66 @@ export default function Results() {
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = url;
-      anchor.download = 'facefind-results.zip';
+      anchor.download = 'facefind-photos.zip';
       anchor.click();
       URL.revokeObjectURL(url);
     } catch {
-      setDownloadError('Could not download files. Please try again.');
+      setDownloadError('The download failed partway. Try again.');
     } finally {
       setDownloading(false);
     }
   }
 
   return (
-    <main className="app-shell">
-      <div className="mx-auto max-w-6xl px-5 py-8">
-        <header className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+    <main className="app-shell font-sans">
+      <div className="mx-auto max-w-6xl px-5 py-10">
+        <header className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
-            <p className="text-sm font-semibold uppercase text-primary">{event?.title ?? 'Results'}</p>
-            <h1 className="mt-1 text-3xl font-bold text-slate-950">Your matched media</h1>
-            <p className="mt-2 text-sm text-slate-600">
-              Found {highConfidenceFiles.length} confirmed photo{highConfidenceFiles.length !== 1 ? 's' : ''} and{' '}
-              {mediumConfidenceFiles.length} possible match{mediumConfidenceFiles.length !== 1 ? 'es' : ''}.
+            <p className="font-mono text-xs uppercase tracking-[0.14em] text-muted">
+              {event?.title ?? 'Results'}
+              {event?.event_code ? ` · ${event.event_code}` : ''}
+            </p>
+            <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+              Your photos
+            </h1>
+            <p className="mt-2 text-muted">
+              {highConfidenceFiles.length > 0
+                ? `${highConfidenceFiles.length} confirmed ${highConfidenceFiles.length === 1 ? 'photo' : 'photos'}` +
+                  (mediumConfidenceFiles.length > 0
+                    ? ` and ${mediumConfidenceFiles.length} more that might be you.`
+                    : '.')
+                : mediumConfidenceFiles.length > 0
+                ? `${mediumConfidenceFiles.length} possible ${mediumConfidenceFiles.length === 1 ? 'match' : 'matches'} - take a look.`
+                : ''}
             </p>
           </div>
           {highConfidenceFiles.length ? (
             <button
-              className="focus-ring inline-flex items-center gap-2 rounded-md bg-slate-950 px-4 py-2 font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="focus-ring inline-flex shrink-0 items-center gap-2 rounded-md bg-gold px-5 py-2.5 font-semibold text-[#1d1622] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
               disabled={downloading}
               onClick={downloadAll}
               type="button"
             >
               <Download size={18} />
-              {downloading ? 'Preparing download...' : 'Download All'}
+              {downloading ? 'Preparing zip…' : 'Download all'}
             </button>
           ) : null}
         </header>
-        {downloadError ? <p className="mb-6 text-sm text-red-700">{downloadError}</p> : null}
-        {error ? (
-          <p className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">{error}</p>
-        ) : results.length === 0 ? (
-          <section className="rounded-lg border border-slate-200 bg-white p-8 text-center">
-            <h2 className="text-xl font-semibold text-slate-950">No photos found for you in this album</h2>
-            <button className="focus-ring mt-5 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 font-semibold text-white" onClick={() => navigate('/scan')} type="button">
+        {downloadError ? <p className="mb-6 text-sm font-medium text-red-500">{downloadError}</p> : null}
+
+        {results.length === 0 ? (
+          <section className="relative rounded-xl border border-line bg-surface px-8 py-16 text-center">
+            <h2 className="font-display text-xl font-semibold text-ink">No photos of you in this album yet</h2>
+            <p className="mx-auto mt-2 max-w-md text-sm text-muted">
+              If you expected matches, try scanning again closer to the camera and in even lighting.
+            </p>
+            <button
+              className="focus-ring mt-6 inline-flex items-center gap-2 rounded-md bg-gold px-5 py-2.5 font-semibold text-[#1d1622] transition hover:brightness-110"
+              onClick={() => navigate('/scan')}
+              type="button"
+            >
               <RotateCcw size={18} />
-              Retry scan
+              Scan again
             </button>
           </section>
         ) : (

@@ -17,6 +17,7 @@ keys/
 *.onnx
 *.task
 faiss_indexes/
+thumb_cache/
 node_modules/
 dist/
 .vite/

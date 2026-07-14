@@ -37,12 +37,12 @@ export default function Scan() {
         setError(
           errorResponse.response?.data?.detail?.toLowerCase().includes('failed')
             ? errorResponse.response.data.detail
-            : 'This event is still indexing. Please wait until the organizer dashboard shows it is ready.',
+            : 'This album is still being indexed. Try again in a few minutes.',
         );
       } else if (errorResponse.response?.status === 400) {
-        setError("We couldn't verify your face. Please try again in good lighting.");
+        setError("We couldn't detect your face clearly. Face the camera in even lighting and try again.");
       } else {
-        setError(errorResponse.response?.data?.detail ?? 'Scan could not be completed. Please try again.');
+        setError(errorResponse.response?.data?.detail ?? 'The scan could not be completed. Try again.');
       }
     } finally {
       setSubmitting(false);
@@ -60,35 +60,49 @@ export default function Scan() {
   }
 
   return (
-    <main className="app-shell">
-      <div className="mx-auto max-w-4xl px-5 py-8">
+    <main className="app-shell font-sans">
+      <div className="mx-auto max-w-2xl px-5 py-10">
         <header className="mb-6">
-          <p className="text-sm font-semibold uppercase text-primary">{event?.title ?? 'Event scan'}</p>
-          <h1 className="mt-1 text-3xl font-bold text-slate-950">Face scan</h1>
+          <p className="font-mono text-xs uppercase tracking-[0.14em] text-muted">
+            {event?.title ?? 'Event'} · {event?.event_code ?? ''}
+          </p>
+          <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-ink">Scan your face</h1>
+          <p className="mt-2 text-muted">One scan finds every photo of you in this album.</p>
         </header>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+        <div className="rounded-xl border border-line bg-surface p-4 shadow-sm sm:p-6">
           <FaceScanCamera disabled={!consented || submitting} onFramesCaptured={submitFrames} />
-          {submitting ? <p className="mt-4 text-sm text-slate-600">Processing scan...</p> : null}
-          {error ? <p className="mt-4 text-sm font-medium text-red-700">{error}</p> : null}
+          {submitting ? <p className="mt-4 font-mono text-sm text-muted">Uploading frames…</p> : null}
+          {error ? <p className="mt-4 text-sm font-medium text-red-500">{error}</p> : null}
         </div>
       </div>
+
       {!consented ? (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-          <section className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
-            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-md bg-accent text-white">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <section className="w-full max-w-lg rounded-xl border border-line bg-surface p-6 shadow-2xl">
+            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-focus text-paper">
               <ShieldCheck size={22} />
             </div>
-            <h2 className="text-xl font-semibold text-slate-950">Consent required</h2>
-            <p className="mt-3 text-sm leading-6 text-slate-600">
-              FaceFind captures short webcam frames to extract a face embedding for this event. Raw scan images are not stored.
-              Embeddings are encrypted, scoped to this event, and can be deleted with your account data.
-            </p>
+            <h2 className="font-display text-xl font-semibold text-ink">Before you scan</h2>
+            <ul className="mt-4 space-y-2.5 text-sm leading-6 text-muted">
+              <li>Your camera takes a few frames to recognize your face in this event's photos.</li>
+              <li>The frames themselves are never stored - only an encrypted signature of your face.</li>
+              <li>That signature works for this event only and expires within a day.</li>
+              <li>No other attendee can see your scan or your results.</li>
+            </ul>
             <div className="mt-6 flex justify-end gap-3">
-              <button className="focus-ring rounded-md border border-slate-300 px-4 py-2 font-semibold transition hover:bg-slate-50" onClick={() => navigate('/')} type="button">
+              <button
+                className="focus-ring rounded-md border border-line px-4 py-2 font-semibold text-ink transition hover:bg-paper"
+                onClick={() => navigate('/')}
+                type="button"
+              >
                 Cancel
               </button>
-              <button className="focus-ring rounded-md bg-primary px-4 py-2 font-semibold text-white transition hover:bg-primary/90" onClick={agree} type="button">
-                I Agree & Continue
+              <button
+                className="focus-ring rounded-md bg-gold px-4 py-2 font-semibold text-[#1d1622] transition hover:brightness-110"
+                onClick={agree}
+                type="button"
+              >
+                Agree and scan
               </button>
             </div>
           </section>

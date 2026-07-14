@@ -1,4 +1,5 @@
 import asyncio
+import re
 from typing import Any, Dict, Optional
 
 import httpx
@@ -183,6 +184,35 @@ class DriveClient:
 
         async with self._client() as client:
             response = await client.get(thumbnail_link)
+            response.raise_for_status()
+            return response.content
+
+    async def get_fresh_thumbnail_bytes(self, file_id: str, size: int = 640) -> bytes:
+        """Fetch a thumbnail via a freshly-minted link.
+
+        Drive thumbnailLinks stored at indexing time expire within hours, so
+        anything user-facing must re-request the link from file metadata at
+        access time rather than trusting a stored copy.
+        """
+        await self._ensure_access()
+        if not self.access_token and not self.api_key:
+            raise ValueError("Drive access requires either an OAuth access token or GOOGLE_API_KEY")
+
+        async with self._client() as client:
+            metadata = await self._request_with_retry(
+                client,
+                "GET",
+                f"{self.DRIVE_API_BASE}/files/{file_id}",
+                params={"fields": "thumbnailLink"},
+            )
+            metadata.raise_for_status()
+            link = metadata.json().get("thumbnailLink")
+            if not link:
+                raise ValueError("Drive did not provide a thumbnail for this file")
+
+            # Links end in a size directive like =s220; ask for a card-sized one.
+            link = re.sub(r"=s\d+(-c)?$", f"=s{size}", link)
+            response = await client.get(link)
             response.raise_for_status()
             return response.content
 

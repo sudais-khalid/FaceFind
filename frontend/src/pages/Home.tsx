@@ -120,7 +120,7 @@ export default function Home() {
       <header className="border-b border-line">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
           <div className="flex items-center gap-2 font-display text-lg font-semibold tracking-tight">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gold text-paper">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gold text-[#1d1622]">
               <ScanFace size={18} />
             </span>
             FaceFind
@@ -159,7 +159,7 @@ export default function Home() {
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <a
-              className="focus-ring inline-flex items-center gap-2 rounded-md bg-gold px-5 py-3 font-semibold text-paper transition hover:brightness-110"
+              className="focus-ring inline-flex items-center gap-2 rounded-md bg-gold px-5 py-3 font-semibold text-[#1d1622] transition hover:brightness-110"
               href="#get-started"
             >
               <Camera size={18} />
@@ -243,7 +243,7 @@ export default function Home() {
           <div className="mt-10 grid gap-5 md:grid-cols-2">
             <Reveal>
               <div className="group h-full rounded-xl border border-line bg-surface p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-gold/40 hover:shadow-lg">
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-gold text-paper shadow-sm shadow-gold/30">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-gold text-[#1d1622] shadow-sm shadow-gold/30">
                   <Camera size={22} />
                 </div>
                 <h3 className="font-display text-xl font-semibold">I have photos to find</h3>

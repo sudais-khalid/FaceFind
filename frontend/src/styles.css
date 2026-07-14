@@ -218,6 +218,28 @@ h3,
   }
 }
 
+/* Blinking REC dot shown while the camera is capturing */
+@keyframes rec-blink {
+  0%,
+  55% {
+    opacity: 1;
+  }
+  60%,
+  100% {
+    opacity: 0.25;
+  }
+}
+
+.rec-dot {
+  animation: rec-blink 1.2s steps(1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rec-dot {
+    animation: none;
+  }
+}
+
 /* Scroll-reveal utility used across marketing sections */
 .reveal {
   opacity: 0;

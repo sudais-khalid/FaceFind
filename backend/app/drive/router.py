@@ -1,10 +1,14 @@
 from datetime import datetime
+from pathlib import Path
+import re
+from uuid import uuid4
+
+import cv2
+import numpy as np
 import redis
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from uuid import uuid4
-import re
 
 from app.db.database import get_db
 from app.db.models import DriveFile, Event, EventStatus, SearchResult
@@ -204,6 +208,60 @@ async def get_file_url(
     )
     url = f"{settings.public_base_url}/api/files/{file_id}/media?token={token}"
     return FileUrlResponse(url=url, expires_in=expires_in)
+
+
+@router.get("/files/{file_id}/thumb")
+async def get_file_thumbnail(
+    file_id: str,
+    token: str,
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """Serve a card-sized thumbnail through our own backend.
+
+    Drive thumbnailLinks expire within hours and often refuse to render in a
+    browser at all, so results cards point here instead. Thumbnails are cached
+    on disk after the first fetch, and if Drive will not produce one we
+    downscale the original file ourselves.
+    """
+    verified = verify_file_access_token(token, settings.master_encryption_key.encode("utf-8"))
+    if verified is None or verified[0] != file_id:
+        raise HTTPException(status_code=403, detail="Link expired or invalid")
+
+    cache_dir = Path(settings.thumb_cache_dir)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_path = cache_dir / f"{file_id}.jpg"
+    headers = {"Cache-Control": "private, max-age=86400"}
+
+    if cache_path.exists():
+        return Response(content=cache_path.read_bytes(), media_type="image/jpeg", headers=headers)
+
+    result = await db.execute(select(DriveFile).where(DriveFile.file_id == file_id))
+    drive_file = result.scalars().first()
+    if drive_file is None:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    client = DriveClient(access_token=None, api_key=settings.google_api_key or None)
+    try:
+        data = await client.get_fresh_thumbnail_bytes(file_id)
+    except Exception:
+        if not (drive_file.mime_type or "").startswith("image/"):
+            raise HTTPException(status_code=404, detail="No thumbnail available")
+        full_bytes = await client.download_file(file_id)
+        array = np.frombuffer(full_bytes, dtype=np.uint8)
+        image = cv2.imdecode(array, cv2.IMREAD_COLOR)
+        if image is None:
+            raise HTTPException(status_code=404, detail="No thumbnail available")
+        height, width = image.shape[:2]
+        scale = 640 / max(height, width)
+        if scale < 1:
+            image = cv2.resize(image, (int(width * scale), int(height * scale)), interpolation=cv2.INTER_AREA)
+        ok, encoded = cv2.imencode(".jpg", image, [int(cv2.IMWRITE_JPEG_QUALITY), 82])
+        if not ok:
+            raise HTTPException(status_code=404, detail="No thumbnail available")
+        data = encoded.tobytes()
+
+    cache_path.write_bytes(data)
+    return Response(content=data, media_type="image/jpeg", headers=headers)
 
 
 @router.get("/files/{file_id}/media")
