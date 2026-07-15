@@ -91,6 +91,12 @@ services:
       - db
       - redis
     command: celery -A app.workers.celery_app worker --loglevel=info
+    # The backend image's HEALTHCHECK probes the FastAPI HTTP server, which
+    # this service never runs (it's a Celery worker, not uvicorn) - disable
+    # it here instead of reporting a permanently, misleadingly unhealthy
+    # container.
+    healthcheck:
+      disable: true
     deploy:
       resources:
         limits:

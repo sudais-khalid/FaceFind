@@ -79,7 +79,7 @@ export default function Results() {
           </div>
           {highConfidenceFiles.length ? (
             <button
-              className="focus-ring inline-flex shrink-0 items-center gap-2 rounded-md bg-gold px-5 py-2.5 font-semibold text-[#1d1622] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+              className="focus-ring inline-flex shrink-0 items-center gap-2 rounded-md bg-gold px-5 py-2.5 font-semibold text-[#1d1622] transition duration-150 hover:brightness-110 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100"
               disabled={downloading}
               onClick={downloadAll}
               type="button"
@@ -98,7 +98,7 @@ export default function Results() {
               If you expected matches, try scanning again closer to the camera and in even lighting.
             </p>
             <button
-              className="focus-ring mt-6 inline-flex items-center gap-2 rounded-md bg-gold px-5 py-2.5 font-semibold text-[#1d1622] transition hover:brightness-110"
+              className="focus-ring mt-6 inline-flex items-center gap-2 rounded-md bg-gold px-5 py-2.5 font-semibold text-[#1d1622] transition duration-150 hover:brightness-110 active:scale-[0.97]"
               onClick={() => navigate('/scan')}
               type="button"
             >

@@ -113,14 +113,14 @@ export default function ScanLoader({ probeId }: Props) {
         {error ? (
           <div className="mt-4 flex gap-3">
             <button
-              className="focus-ring flex-1 rounded-md bg-gold px-4 py-2.5 font-semibold text-[#1d1622] transition hover:brightness-110"
+              className="focus-ring flex-1 rounded-md bg-gold px-4 py-2.5 font-semibold text-[#1d1622] transition duration-150 hover:brightness-110 active:scale-[0.97]"
               onClick={() => window.location.reload()}
               type="button"
             >
               Try again
             </button>
             <button
-              className="focus-ring flex-1 rounded-md border border-line px-4 py-2.5 font-semibold text-ink transition hover:bg-paper"
+              className="focus-ring flex-1 rounded-md border border-line px-4 py-2.5 font-semibold text-ink transition duration-150 hover:bg-paper active:scale-[0.97]"
               onClick={() => navigate('/scan')}
               type="button"
             >

@@ -77,8 +77,8 @@ export default function Scan() {
       </div>
 
       {!consented ? (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <section className="w-full max-w-lg rounded-xl border border-line bg-surface p-6 shadow-2xl">
+        <div className="overlay-in fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <section className="dialog-in w-full max-w-lg rounded-xl border border-line bg-surface p-6 shadow-2xl">
             <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-focus text-paper">
               <ShieldCheck size={22} />
             </div>
@@ -91,14 +91,14 @@ export default function Scan() {
             </ul>
             <div className="mt-6 flex justify-end gap-3">
               <button
-                className="focus-ring rounded-md border border-line px-4 py-2 font-semibold text-ink transition hover:bg-paper"
+                className="focus-ring rounded-md border border-line px-4 py-2 font-semibold text-ink transition duration-150 hover:bg-paper active:scale-[0.97]"
                 onClick={() => navigate('/')}
                 type="button"
               >
                 Cancel
               </button>
               <button
-                className="focus-ring rounded-md bg-gold px-4 py-2 font-semibold text-[#1d1622] transition hover:brightness-110"
+                className="focus-ring rounded-md bg-gold px-4 py-2 font-semibold text-[#1d1622] transition duration-150 hover:brightness-110 active:scale-[0.97]"
                 onClick={agree}
                 type="button"
               >

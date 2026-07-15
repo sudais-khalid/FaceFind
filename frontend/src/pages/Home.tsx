@@ -19,6 +19,21 @@ import ScanDemo from '../components/ScanDemo';
 import { useStore } from '../store/useStore';
 import type { EventSummary } from '../types';
 
+function useScrolled(threshold = 8) {
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    function onScroll() {
+      setScrolled(window.scrollY > threshold);
+    }
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [threshold]);
+
+  return scrolled;
+}
+
 function useTheme() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const stored = window.localStorage.getItem('facefind-theme');
@@ -79,6 +94,7 @@ export default function Home() {
   const [organizerLoading, setOrganizerLoading] = useState(false);
   const [organizerError, setOrganizerError] = useState<string | null>(null);
   const { theme, toggle } = useTheme();
+  const scrolled = useScrolled();
 
   async function join(code: string) {
     setLoading(true);
@@ -117,7 +133,7 @@ export default function Home() {
   return (
     <main className="app-shell font-sans">
       {/* Nav */}
-      <header className="border-b border-line">
+      <header className={`site-nav ${scrolled ? 'is-scrolled' : ''}`}>
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
           <div className="flex items-center gap-2 font-display text-lg font-semibold tracking-tight">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gold text-[#1d1622]">
@@ -134,7 +150,7 @@ export default function Home() {
             </a>
             <button
               aria-label="Toggle theme"
-              className="focus-ring flex h-9 w-9 items-center justify-center rounded-full border border-line text-muted transition hover:text-ink"
+              className="focus-ring flex h-9 w-9 items-center justify-center rounded-full border border-line text-muted transition hover:text-ink active:scale-90"
               onClick={toggle}
               type="button"
             >
@@ -147,40 +163,49 @@ export default function Home() {
       {/* Hero */}
       <section className="mx-auto grid max-w-6xl gap-12 px-5 py-16 sm:py-24 lg:grid-cols-2 lg:items-center">
         <div>
-          <span className="mb-5 inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1 font-mono text-[11px] uppercase tracking-[0.14em] text-muted">
+          <span className="hero-in mb-5 inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1 font-mono text-[11px] uppercase tracking-[0.14em] text-muted">
             Face-matched photo retrieval
           </span>
-          <h1 className="font-display text-4xl font-semibold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.4rem]">
+          <h1
+            className="hero-in font-display text-4xl font-semibold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.4rem]"
+            style={{ animationDelay: '80ms' }}
+          >
             Somewhere in this album is a photo of <span className="text-gold">you.</span>
           </h1>
-          <p className="mt-6 max-w-lg text-lg leading-relaxed text-muted">
+          <p
+            className="hero-in mt-6 max-w-lg text-lg leading-relaxed text-muted"
+            style={{ animationDelay: '160ms' }}
+          >
             Skip the group album. Scan your face once and FaceFind finds every photo and clip you're actually in —
             out of hundreds or thousands, in under a second.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div className="hero-in mt-8 flex flex-wrap gap-3" style={{ animationDelay: '240ms' }}>
             <a
-              className="focus-ring inline-flex items-center gap-2 rounded-md bg-gold px-5 py-3 font-semibold text-[#1d1622] transition hover:brightness-110"
+              className="focus-ring group inline-flex items-center gap-2 rounded-md bg-gold px-5 py-3 font-semibold text-[#1d1622] transition duration-150 hover:brightness-110 active:scale-[0.97]"
               href="#get-started"
             >
-              <Camera size={18} />
+              <Camera className="transition-transform duration-200 group-hover:-rotate-6" size={18} />
               Find my photos
             </a>
             <a
-              className="focus-ring inline-flex items-center gap-2 rounded-md border border-line px-5 py-3 font-semibold text-ink transition hover:bg-surface"
+              className="focus-ring inline-flex items-center gap-2 rounded-md border border-line px-5 py-3 font-semibold text-ink transition duration-150 hover:bg-surface active:scale-[0.97]"
               href="#how-it-works"
             >
               See how it works
             </a>
           </div>
-          <p className="mt-6 flex items-center gap-2 text-sm text-muted">
+          <p
+            className="hero-in mt-6 flex items-center gap-2 text-sm text-muted"
+            style={{ animationDelay: '320ms' }}
+          >
             <ShieldCheck className="shrink-0 text-focus" size={16} />
             Your scan is encrypted, single-use for this event, and never shown to other attendees.
           </p>
         </div>
 
-        <Reveal>
+        <div className="hero-in" style={{ animationDelay: '120ms' }}>
           <ScanDemo />
-        </Reveal>
+        </div>
       </section>
 
       {/* How it works */}
@@ -195,9 +220,9 @@ export default function Home() {
           <div className="mt-12 grid gap-8 md:grid-cols-3">
             {STEPS.map((step, index) => (
               <Reveal delayMs={index * 100} key={step.title}>
-                <div className="flex h-full flex-col gap-4 rounded-xl border border-line bg-surface p-6">
+                <div className="group flex h-full flex-col gap-4 rounded-xl border border-line bg-surface p-6 transition duration-300 hover:-translate-y-1 hover:border-gold/40 hover:shadow-lg">
                   <div className="flex items-center justify-between">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-gold/15 text-gold">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-gold/15 text-gold transition-transform duration-300 group-hover:scale-110">
                       <step.icon size={20} />
                     </span>
                     <span className="font-mono text-sm text-muted">0{index + 1}</span>
@@ -223,8 +248,8 @@ export default function Home() {
           <div className="mt-12 grid gap-8 md:grid-cols-3">
             {TRUST_POINTS.map((point, index) => (
               <Reveal delayMs={index * 100} key={point.title}>
-                <div className="flex h-full flex-col gap-3">
-                  <point.icon className="text-focus" size={22} />
+                <div className="group flex h-full flex-col gap-3">
+                  <point.icon className="text-focus transition-transform duration-300 group-hover:scale-110" size={22} />
                   <h3 className="font-display text-lg font-semibold">{point.title}</h3>
                   <p className="text-sm leading-relaxed text-muted">{point.body}</p>
                 </div>
@@ -262,7 +287,7 @@ export default function Home() {
                   Create an event from a Google Drive folder and share the event code.
                 </p>
                 <button
-                  className="focus-ring w-full rounded-md bg-ink px-4 py-3 font-semibold text-paper transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                  className="focus-ring w-full rounded-md bg-ink px-4 py-3 font-semibold text-paper transition duration-150 hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100 sm:w-auto"
                   disabled={organizerLoading}
                   onClick={organizerLogin}
                   type="button"

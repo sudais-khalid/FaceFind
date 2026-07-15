@@ -63,12 +63,12 @@ export default function EventCodeInput({ onSubmit, loading = false }: Props) {
         </div>
       </div>
       <button
-        className="focus-ring inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-gold font-semibold text-[#1d1622] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+        className="focus-ring group inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-gold font-semibold text-[#1d1622] transition duration-150 hover:brightness-110 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100"
         disabled={!valid || loading}
         type="submit"
       >
         {loading ? 'Joining…' : 'Find my photos'}
-        <ArrowRight size={18} />
+        <ArrowRight className="transition-transform duration-200 group-hover:translate-x-0.5" size={18} />
       </button>
     </form>
   );
