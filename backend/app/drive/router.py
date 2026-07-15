@@ -290,7 +290,18 @@ async def get_file_media(
         raise HTTPException(status_code=404, detail="File not found")
 
     client = DriveClient(access_token=None, api_key=settings.google_api_key or None)
-    media_bytes = await client.download_file(file_id)
+    media_type = drive_file.mime_type or "application/octet-stream"
+    try:
+        media_bytes = await client.download_file(file_id)
+    except Exception:
+        # Google blocks alt=media API downloads from many datacenter IPs, but
+        # the googleusercontent CDN serves the same photo at original
+        # resolution via a fresh thumbnailLink with =s0. Images only - videos
+        # have no CDN equivalent and genuinely fail here.
+        if not media_type.startswith("image/"):
+            raise HTTPException(status_code=502, detail="The file could not be fetched from Drive right now")
+        media_bytes = await client.get_fresh_thumbnail_bytes(file_id, size=0)
+        media_type = "image/jpeg"
 
     # Always carry the original filename so "save as" / downloads keep the
     # real name and extension. `inline` still renders in <img>/<video>;
@@ -299,6 +310,6 @@ async def get_file_media(
     disposition = "attachment" if download else "inline"
     return Response(
         content=media_bytes,
-        media_type=drive_file.mime_type or "application/octet-stream",
+        media_type=media_type,
         headers={"Content-Disposition": f'{disposition}; filename="{safe_name}"'},
     )

@@ -145,11 +145,19 @@ async def _index_drive_folder(event_id: str, task: Any | None = None) -> dict[st
                     and existing.quality_flags.get("detector") == DETECTOR_VERSION
                 )
 
+                # Embeddings only "stick" if they came from full-quality media;
+                # thumbnail-quality embeddings are upgraded on the next reindex.
+                full_quality_source = (
+                    existing is not None
+                    and bool(existing.quality_flags)
+                    and str(existing.quality_flags.get("source", "")).startswith("full_download")
+                )
+
                 should_skip = (
                     existing is not None
                     and existing.md5_checksum == md5_checksum
                     and existing.indexed_at is not None
-                    and (zero_faces_confirmed or has_embeddings_for_event)
+                    and (zero_faces_confirmed or (has_embeddings_for_event and full_quality_source))
                 )
                 if should_skip:
                     event.files_indexed += 1
@@ -193,20 +201,13 @@ async def _index_drive_folder(event_id: str, task: Any | None = None) -> dict[st
                                 data = await drive_client.download_file(file_id)
                                 return data, {"source": "full_download"}, None
                             except Exception:
-                                # Drive sporadically 403s full downloads, especially
-                                # from datacenter IPs. One delayed retry rescues most
-                                # of them before degrading quality.
-                                await asyncio.sleep(3)
-                                try:
-                                    data = await drive_client.download_file(file_id)
-                                    return data, {"source": "full_download_retry"}, None
-                                except Exception:
-                                    # Fall back to the thumbnail rather than losing
-                                    # the file - a lower-quality embedding beats none.
-                                    if not file_metadata.get("thumbnailLink"):
-                                        raise
-                                    data = await drive_client.get_thumbnail(file_id, file_metadata["thumbnailLink"])
-                                    return data, {"source": "thumbnail_after_full_download_failure"}, None
+                                # Google blocks alt=media API downloads from many
+                                # datacenter IPs ("unusual traffic"), but the
+                                # googleusercontent CDN serves the same photo at
+                                # original resolution via a fresh thumbnailLink
+                                # with =s0 - full quality through the open door.
+                                data = await drive_client.get_fresh_thumbnail_bytes(file_id, size=0)
+                                return data, {"source": "full_download_cdn"}, None
                         data = await drive_client.download_file(file_id)
                         return data, {"source": "full_download"}, None
                     except Exception as exc:
