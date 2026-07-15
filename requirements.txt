@@ -8,7 +8,10 @@ pydantic-settings==2.2.1
 python-jose[cryptography]==3.3.0
 httpx==0.26.0
 onnxruntime==1.27.0
-opencv-python-headless==4.9.0.80
+# 4.10.0.84+ is required for numpy 2.x ABI compatibility
+opencv-python-headless==4.10.0.84
+# used directly by the CV pipeline (image decode); do not rely on transitive installs
+pillow==12.3.0
 faiss-cpu==1.9.0
 celery[redis]==5.3.6
 redis==5.0.3
