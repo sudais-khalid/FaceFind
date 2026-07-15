@@ -193,14 +193,20 @@ async def _index_drive_folder(event_id: str, task: Any | None = None) -> dict[st
                                 data = await drive_client.download_file(file_id)
                                 return data, {"source": "full_download"}, None
                             except Exception:
-                                # Some Drive files reject API-key-only full downloads
-                                # (403) even though their thumbnail is reachable. Fall
-                                # back to the thumbnail rather than losing the file
-                                # entirely - a lower-quality embedding beats none.
-                                if not file_metadata.get("thumbnailLink"):
-                                    raise
-                                data = await drive_client.get_thumbnail(file_id, file_metadata["thumbnailLink"])
-                                return data, {"source": "thumbnail_after_full_download_failure"}, None
+                                # Drive sporadically 403s full downloads, especially
+                                # from datacenter IPs. One delayed retry rescues most
+                                # of them before degrading quality.
+                                await asyncio.sleep(3)
+                                try:
+                                    data = await drive_client.download_file(file_id)
+                                    return data, {"source": "full_download_retry"}, None
+                                except Exception:
+                                    # Fall back to the thumbnail rather than losing
+                                    # the file - a lower-quality embedding beats none.
+                                    if not file_metadata.get("thumbnailLink"):
+                                        raise
+                                    data = await drive_client.get_thumbnail(file_id, file_metadata["thumbnailLink"])
+                                    return data, {"source": "thumbnail_after_full_download_failure"}, None
                         data = await drive_client.download_file(file_id)
                         return data, {"source": "full_download"}, None
                     except Exception as exc:

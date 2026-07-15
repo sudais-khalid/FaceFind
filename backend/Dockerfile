@@ -40,7 +40,11 @@ COPY backend/alembic.ini alembic.ini
 
 ENV PATH="/opt/venv/bin:$PATH"
 
+# Pre-create the volume mount points so named volumes inherit appuser
+# ownership - otherwise Docker creates them root-owned and the non-root
+# runtime user cannot persist the FAISS index or thumbnail cache.
 RUN useradd -m appuser \
+    && mkdir -p /app/faiss_indexes /app/thumb_cache \
     && chown -R appuser:appuser /app /opt/venv
 USER appuser
 
