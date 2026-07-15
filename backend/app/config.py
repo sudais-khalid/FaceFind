@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     google_redirect_uri: str = "http://localhost:8000/auth/callback"
     # Base URL used to build signed file-access links returned to the client.
     public_base_url: str = "http://localhost:8000"
+    # Comma-separated list of origins allowed to call the API from a browser.
+    cors_origins: str = "http://localhost:5173"
     google_api_key: str = ""
     master_encryption_key: str = "dummy-encryption-key-32-bytes-long-x"
     faiss_index_dir: str = "./faiss_indexes"
